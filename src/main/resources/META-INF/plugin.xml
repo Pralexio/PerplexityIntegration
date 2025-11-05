@@ -2,7 +2,7 @@
     <id>fr.pralexio.perplexityintegration</id>
     <name>Perplexity Chat Integration</name>
     <vendor>pralexio</vendor>
-    <description>Intègre Perplexity AI directement dans l'IDE</description>
+    <description>Integrates Perplexity AI chat directly into your IDE. Get instant access to AI-powered conversations without leaving your code editor. Perfect for quick research, code explanations, and creative assistance while developing.</description>
     <version>1.0.0</version>
 
     <depends>com.intellij.modules.platform</depends>
