@@ -1,0 +1,17 @@
+<idea-plugin>
+    <id>fr.pralexio.perplexityintegration</id>
+    <name>Perplexity Chat Integration</name>
+    <vendor>pralexio</vendor>
+    <description>Intègre Perplexity AI directement dans l'IDE</description>
+    <version>1.0.0</version>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow
+                id="Perplexity"
+                anchor="right"
+                icon="/icons/perplexity.png"
+                factoryClass="fr.pralexio.perplexityintegration.PerplexityToolWindowFactory"/>
+    </extensions>
+</idea-plugin>
