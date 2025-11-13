@@ -11,7 +11,6 @@ class PerplexityToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         System.setProperty("ide.browser.jcef.gpu.disable", "true")
         System.setProperty("ide.browser.jcef.sandbox.enable", "false")
-
         System.setProperty("ide.browser.jcef.darkTheme.enabled", "true")
 
         val perplexityPanel = PerplexityPanel()
