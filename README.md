@@ -2,7 +2,7 @@
 
 Integrate Perplexity AI chat directly into your IntelliJ IDEA. Get instant access to AI-powered conversations, research, and assistance without leaving your code editor.
 
-![Perplexity Integration Demo](screenshot.png)
+![Perplexity Integration Demo](https://raw.githubusercontent.com/Pralexio/PerplexityIntegration/refs/heads/main/screenshot.png)
 *Screenshot: Perplexity running inside IntelliJ IDEA*
 
 ## ✨ Features
