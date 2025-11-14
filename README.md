@@ -12,7 +12,7 @@ Integrate Perplexity AI chat directly into your IntelliJ IDEA. Get instant acces
 - 🔄 **Session Management** - Save and manage authentication tokens
 - 📊 **Token Expiration Tracking** - Visual display of token validity
 - ⚡ **Quick Access** - Always available in the right sidebar
-
+- 
 ## 📦 Installation
 
 ### Via JetBrains Marketplace
