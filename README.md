@@ -19,8 +19,7 @@ Integrate Perplexity AI chat directly into your IntelliJ IDEA. Get instant acces
 
 [![Get from Marketplace](https://img.shields.io/jetbrains/plugin/v/28929?label=Perplexity&color=blue)](https://plugins.jetbrains.com/plugin/28929)
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/28929?label=downloads)](https://plugins.jetbrains.com/plugin/28929)
-[![Rating](https://img.shields.io/jetbrains/plugin/r/28929?label=rating)](https://plugins.jetbrains.com/plugin/28929/reviews)
-
+![Rating](https://img.shields.io/badge/rating-4.3★-brightgreen)
 1. Open IntelliJ IDEA
 2. Go to **Settings/Preferences** → **Plugins**
 3. Click on **Marketplace** tab
