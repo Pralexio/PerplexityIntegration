@@ -12,7 +12,7 @@ Integrate Perplexity AI chat directly into your IntelliJ IDEA. Get instant acces
 - 🔄 **Session Management** - Save and manage authentication tokens
 - 📊 **Token Expiration Tracking** - Visual display of token validity
 - ⚡ **Quick Access** - Always available in the right sidebar
-- 
+  
 ## 📦 Installation
 
 ### Via JetBrains Marketplace
@@ -84,7 +84,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 🐛 Reporting Issues
 
-Found a bug or have a feature request? [Open an issue](https://github.com/yourusername/perplexity-integration/issues/new)
+Found a bug or have a feature request? [Open an issue](https://github.com/Pralexio/PerplexityIntegration/issues/new)
 
 Please include:
 - IntelliJ IDEA version
@@ -102,7 +102,7 @@ Please include:
 Run plugin in development IDE
 ./gradlew runIde
 
-Build plugin JAR
+Build plugin
 ./gradlew buildPlugin
 
 Run tests
@@ -111,18 +111,12 @@ Run tests
 
 ## 📝 Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
-
 ### Latest Release (v1.5)
 - ✨ Token-based authentication system
 - 📊 Token expiration tracking
 - 📖 Enhanced help with Chrome/Firefox guides
 - 🎨 Improved UI with toolbar
 - 🔄 Better page reload mechanism
-
-## 📄 License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
