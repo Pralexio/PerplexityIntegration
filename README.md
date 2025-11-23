@@ -87,10 +87,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 Found a bug or have a feature request? [Open an issue](https://github.com/Pralexio/PerplexityIntegration/issues/new)
 
 Please include:
-- IntelliJ IDEA version
-- Plugin version
-- Steps to reproduce
-- Expected vs actual behavior
+- IntelliJ IDEA version  
+- Plugin version  
+- Steps to reproduce  
+- Expected vs. actual behavior  
+- If the issue involves a crash or freeze, please attach the relevant log files if possible
 
 ## 🏗️ Development
 
