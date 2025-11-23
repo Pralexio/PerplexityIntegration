@@ -31,7 +31,7 @@ Integrate Perplexity AI chat directly into your IntelliJ IDEA. Get instant acces
 1. Download the latest release from [Releases](https://github.com/Pralexio/PerplexityIntegration/releases)
 2. Open IntelliJ IDEA → **Settings/Preferences** → **Plugins**
 3. Click ⚙️ → **Install Plugin from Disk**
-4. Select the downloaded `.jar` file
+4. Select the downloaded `.zip` file
 5. Restart IDE
 
 ## 🚀 Quick Start
