@@ -446,12 +446,11 @@ class PerplexityPanel {
 
     private fun toggleDevTools() {
         browser?.let { browserInstance ->
-            if (devToolsOpen) {
-                browserInstance.cefBrowser.devTools?.close(true)
-                devToolsOpen = false
-            } else {
+            try {
                 browserInstance.openDevtools()
-                devToolsOpen = true
+                devToolsOpen = !devToolsOpen
+            } catch (e: Exception) {
+                // DevTools not available or already open
             }
         }
     }
