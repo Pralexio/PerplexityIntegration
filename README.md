@@ -1,16 +1,17 @@
-# Perplexity Integration for IntelliJ IDEA
+# Perplexity AI Chat for IntelliJ IDEA
 
-Integrate Perplexity AI chat directly into your IntelliJ IDEA. Get instant access to AI-powered conversations, research, and assistance without leaving your code editor.
+Access Perplexity AI directly in your IDE without switching windows. Get instant AI-powered answers, code explanations, and research assistance while you develop.
 
 ![Perplexity Integration Demo](https://raw.githubusercontent.com/Pralexio/PerplexityIntegration/refs/heads/main/screenshot.png)
 
 ## ✨ Features
 
-- 🚀 **Seamless Integration** - Perplexity AI embedded directly in your IDE
-- 🔐 **Flexible Authentication** - Login via browser or session token
-- 🔄 **Session Management** - Save and manage authentication tokens
+- 🚀 **Embedded Browser** - Full Perplexity experience in a tool window
+- 💻 **Send Code to Chat** - Select code and send it directly to Perplexity (`Ctrl+Alt+P`)
+- 🌙 **Dark Mode** - Automatic dark theme to match your IDE
+- 🔐 **Session Persistence** - Stay logged in across IDE restarts
+- 🛠️ **DevTools** - Built-in browser developer tools for debugging
 - 📊 **Token Expiration Tracking** - Visual display of token validity
-- ⚡ **Quick Access** - Always available in the right sidebar
   
 ## 📦 Installation
 
@@ -63,7 +64,14 @@ Integrate Perplexity AI chat directly into your IntelliJ IDEA. Get instant acces
 | **Clear Token** | Remove saved token and logout |
 | **Reload** | Refresh the Perplexity page |
 | **Help** | Detailed authentication instructions |
+| **DevTools** | Open browser developer tools for debugging |
 | *Token Status* | Shows token expiration date |
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Alt+P` | Send selected code to Perplexity |
 
 ## ⚙️ Requirements
 
@@ -111,7 +119,14 @@ Run tests
 
 ## 📝 Changelog
 
-### Latest Release (v1.5)
+### Latest Release (v1.6)
+- ✨ **New:** Send selected code to Perplexity with right-click or `Ctrl+Alt+P`
+- 🛠️ **New:** DevTools button for browser debugging
+- 🌙 **Improved:** Dark mode now persists and won't revert to light theme
+- 🔐 **Improved:** Token login reliability with validation
+- ⚡ **Improved:** Performance optimizations
+
+### v1.5
 - ✨ Token-based authentication system
 - 📊 Token expiration tracking
 - 📖 Enhanced help with Chrome/Firefox guides

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.pralexio.perplexityintegration"
-version = "1.5"
+version = "1.6"
 
 repositories {
     mavenCentral()

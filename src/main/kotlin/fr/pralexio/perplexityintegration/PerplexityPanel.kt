@@ -4,6 +4,8 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.Messages
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.TimeUnit
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import org.cef.browser.CefBrowser
@@ -24,6 +26,102 @@ class PerplexityPanel {
     private val containerPanel = JPanel(BorderLayout())
     private val component: JComponent
     private var tokenExpirationLabel: JLabel? = null
+    private var devToolsOpen = false
+    
+    private val dateFormat by lazy { SimpleDateFormat("MMM dd, yyyy") }
+    
+    private val notificationGroup by lazy {
+        NotificationGroupManager.getInstance().getNotificationGroup("Perplexity.Notifications")
+    }
+    
+    private val darkModeScript: String by lazy {
+        """
+            (function() {
+                // Override matchMedia to always report dark mode preference
+                if (!window.__darkModePatched) {
+                    window.__darkModePatched = true;
+                    const originalMatchMedia = window.matchMedia;
+                    window.matchMedia = function(query) {
+                        if (query.includes('prefers-color-scheme')) {
+                            return {
+                                matches: query.includes('dark'),
+                                media: query,
+                                onchange: null,
+                                addListener: function(cb) {},
+                                removeListener: function(cb) {},
+                                addEventListener: function(type, cb) {},
+                                removeEventListener: function(type, cb) {},
+                                dispatchEvent: function() { return true; }
+                            };
+                        }
+                        return originalMatchMedia.call(window, query);
+                    };
+                }
+                
+                // Force dark color scheme on html element
+                document.documentElement.style.colorScheme = 'dark';
+                document.documentElement.setAttribute('data-color-mode', 'dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.remove('light');
+                document.documentElement.classList.add('dark');
+                
+                // Inject persistent dark mode CSS
+                let style = document.getElementById('force-dark-mode-plugin');
+                if (!style) {
+                    style = document.createElement('style');
+                    style.id = 'force-dark-mode-plugin';
+                    style.textContent = `
+                        :root {
+                            color-scheme: dark !important;
+                        }
+                        html, body {
+                            background-color: #191a1a !important;
+                            color-scheme: dark !important;
+                        }
+                        html.light, body.light, [data-theme="light"], [data-color-mode="light"] {
+                            background-color: #191a1a !important;
+                            color-scheme: dark !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+                
+                // Set localStorage preferences
+                try {
+                    localStorage.setItem('theme', 'dark');
+                    localStorage.setItem('color-theme', 'dark');
+                    localStorage.setItem('perplexity-theme', 'dark');
+                    localStorage.setItem('colorMode', 'dark');
+                } catch (e) {}
+                
+                // Watch for theme changes and revert them
+                if (!window.__darkModeObserver) {
+                    window.__darkModeObserver = new MutationObserver(function(mutations) {
+                        mutations.forEach(function(mutation) {
+                            if (mutation.type === 'attributes') {
+                                const html = document.documentElement;
+                                if (html.classList.contains('light')) {
+                                    html.classList.remove('light');
+                                    html.classList.add('dark');
+                                }
+                                if (html.getAttribute('data-theme') === 'light') {
+                                    html.setAttribute('data-theme', 'dark');
+                                }
+                                if (html.getAttribute('data-color-mode') === 'light') {
+                                    html.setAttribute('data-color-mode', 'dark');
+                                }
+                                html.style.colorScheme = 'dark';
+                            }
+                        });
+                    });
+                    window.__darkModeObserver.observe(document.documentElement, {
+                        attributes: true,
+                        attributeFilter: ['class', 'data-theme', 'data-color-mode', 'style']
+                    });
+                }
+            })();
+        """.trimIndent()
+    }
 
     init {
         if (JBCefApp.isSupported()) {
@@ -47,6 +145,11 @@ class PerplexityPanel {
         }
 
         browser?.dispose()
+        
+        // Inject token before loading if available
+        if (settings.sessionToken.isNotEmpty()) {
+            injectSessionToken(settings.sessionToken)
+        }
 
         browser = JBCefBrowser.createBuilder()
             .setOffScreenRendering(false)
@@ -59,62 +162,12 @@ class PerplexityPanel {
                 frame: CefFrame?,
                 httpStatusCode: Int
             ) {
+                if (frame == null || !frame.isMain) return
+                
+                // Re-inject token on each page load to ensure it persists
                 if (settings.sessionToken.isNotEmpty()) {
                     injectSessionToken(settings.sessionToken)
                 }
-
-                val darkModeScript = """
-                    (function() {
-                        const originalMatchMedia = window.matchMedia;
-                        window.matchMedia = function(query) {
-                            if (query.includes('prefers-color-scheme')) {
-                                return {
-                                    matches: query.includes('dark'),
-                                    media: query,
-                                    addListener: function() {},
-                                    removeListener: function() {},
-                                    addEventListener: function() {},
-                                    removeEventListener: function() {},
-                                    dispatchEvent: function() { return true; }
-                                };
-                            }
-                            return originalMatchMedia.call(window, query);
-                        };
-                        
-                        const style = document.createElement('style');
-                        style.id = 'force-dark-mode';
-                        style.textContent = `
-                            :root {
-                                color-scheme: dark !important;
-                            }
-                            body {
-                                background-color: #0b0f19 !important;
-                                color: #e0e0e0 !important;
-                            }
-                            * {
-                                color-scheme: dark !important;
-                            }
-                        `;
-                        
-                        const existingStyle = document.getElementById('force-dark-mode');
-                        if (existingStyle) {
-                            existingStyle.remove();
-                        }
-                        document.head.appendChild(style);
-                        
-                        if (document.documentElement) {
-                            document.documentElement.setAttribute('data-theme', 'dark');
-                            document.documentElement.style.colorScheme = 'dark';
-                        }
-                        
-                        try {
-                            localStorage.setItem('theme', 'dark');
-                            localStorage.setItem('perplexity-theme', 'dark');
-                        } catch (e) {
-                            console.log('Could not set localStorage:', e);
-                        }
-                    })();
-                """.trimIndent()
 
                 cefBrowser?.executeJavaScript(darkModeScript, cefBrowser.url, 0)
             }
@@ -127,14 +180,18 @@ class PerplexityPanel {
 
     private fun reloadBrowser() {
         browser?.let { browserInstance ->
+            // Re-inject token before reload
+            if (settings.sessionToken.isNotEmpty()) {
+                injectSessionToken(settings.sessionToken)
+            }
+            
             browserInstance.loadURL("about:blank")
 
-            Thread {
-                Thread.sleep(300)
+            AppExecutorUtil.getAppScheduledExecutorService().schedule({
                 ApplicationManager.getApplication().invokeLater {
                     browserInstance.loadURL("https://www.perplexity.ai")
                 }
-            }.start()
+            }, 300, TimeUnit.MILLISECONDS)
         }
     }
 
@@ -160,11 +217,17 @@ class PerplexityPanel {
         helpButton.addActionListener {
             showTokenInstructions()
         }
+        
+        val devToolsButton = JButton("DevTools")
+        devToolsButton.addActionListener {
+            toggleDevTools()
+        }
 
         toolbar.add(setTokenButton)
         toolbar.add(clearTokenButton)
         toolbar.add(reloadButton)
         toolbar.add(helpButton)
+        toolbar.add(devToolsButton)
 
         // Add token expiration label
         tokenExpirationLabel = JLabel()
@@ -179,7 +242,6 @@ class PerplexityPanel {
         tokenExpirationLabel?.let { label ->
             if (settings.sessionToken.isNotEmpty()) {
                 val expirationDate = Date(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)
-                val dateFormat = SimpleDateFormat("MMM dd, yyyy")
                 label.text = "Token expires: ${dateFormat.format(expirationDate)}"
             } else {
                 label.text = "No token set"
@@ -197,10 +259,26 @@ class PerplexityPanel {
         )
 
         if (token != null && token.trim().isNotEmpty()) {
-            settings.sessionToken = token.trim()
+            val trimmedToken = token.trim()
+            
+            // Basic validation - token should be reasonably long
+            if (trimmedToken.length < 20) {
+                notificationGroup
+                    .createNotification(
+                        "Invalid Token",
+                        "The token appears to be too short. Please copy the full token value.",
+                        NotificationType.WARNING
+                    )
+                    .notify(null)
+                return
+            }
+            
+            settings.sessionToken = trimmedToken
+            
+            // Inject token immediately
+            injectSessionToken(trimmedToken)
 
-            NotificationGroupManager.getInstance()
-                .getNotificationGroup("Perplexity.Notifications")
+            notificationGroup
                 .createNotification(
                     "Token Saved",
                     "Reloading Perplexity...",
@@ -225,12 +303,14 @@ class PerplexityPanel {
 
         if (result == Messages.YES) {
             settings.sessionToken = ""
+            
+            // Clear the session cookie
+            clearSessionCookie()
 
-            NotificationGroupManager.getInstance()
-                .getNotificationGroup("Perplexity.Notifications")
+            notificationGroup
                 .createNotification(
                     "Token Cleared",
-                    "Token has been removed",
+                    "Token has been removed. You will need to login again.",
                     NotificationType.INFORMATION
                 )
                 .notify(null)
@@ -290,10 +370,51 @@ class PerplexityPanel {
     private fun injectSessionToken(token: String) {
         try {
             val cookieManager = CefCookieManager.getGlobalManager()
+            val expirationDate = Date(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)
 
+            // Main session token
             val cookie = CefCookie(
                 "__Secure-next-auth.session-token",
                 token,
+                ".perplexity.ai",
+                "/",
+                true,  // secure
+                true,  // httpOnly
+                null,  // creation
+                null,  // lastAccess
+                true,  // hasExpires
+                expirationDate
+            )
+            cookieManager.setCookie("https://www.perplexity.ai", cookie)
+            
+            // Also set for www subdomain
+            val wwwCookie = CefCookie(
+                "__Secure-next-auth.session-token",
+                token,
+                "www.perplexity.ai",
+                "/",
+                true,
+                true,
+                null,
+                null,
+                true,
+                expirationDate
+            )
+            cookieManager.setCookie("https://www.perplexity.ai", wwwCookie)
+        } catch (e: Exception) {
+            // CEF not ready yet - will retry on page load
+        }
+    }
+    
+    private fun clearSessionCookie() {
+        try {
+            val cookieManager = CefCookieManager.getGlobalManager()
+            // Delete by setting expired cookie
+            val expiredDate = Date(0)
+            
+            val expiredCookie = CefCookie(
+                "__Secure-next-auth.session-token",
+                "",
                 ".perplexity.ai",
                 "/",
                 true,
@@ -301,13 +422,105 @@ class PerplexityPanel {
                 null,
                 null,
                 true,
-                Date(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)
+                expiredDate
             )
-
-            cookieManager.setCookie("https://www.perplexity.ai", cookie)
+            cookieManager.setCookie("https://www.perplexity.ai", expiredCookie)
+            
+            val expiredWwwCookie = CefCookie(
+                "__Secure-next-auth.session-token",
+                "",
+                "www.perplexity.ai",
+                "/",
+                true,
+                true,
+                null,
+                null,
+                true,
+                expiredDate
+            )
+            cookieManager.setCookie("https://www.perplexity.ai", expiredWwwCookie)
         } catch (e: Exception) {
-            // CEF not ready yet
+            // Ignore errors
         }
+    }
+
+    private fun toggleDevTools() {
+        browser?.let { browserInstance ->
+            if (devToolsOpen) {
+                browserInstance.cefBrowser.devTools?.close(true)
+                devToolsOpen = false
+            } else {
+                browserInstance.openDevtools()
+                devToolsOpen = true
+            }
+        }
+    }
+    
+    fun sendCodeToChat(code: String, language: String = "") {
+        browser?.let { browserInstance ->
+            val escapedCode = code
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("'", "\\'")
+                .replace("`", "\\`")
+                .replace("\$", "\\\$")
+                .replace("\n", "\\n")
+                .replace("\r", "")
+            
+            val langTag = if (language.isNotEmpty()) language else ""
+            val fullText = "```$langTag\\n$escapedCode\\n```"
+            
+            val script = """
+                (function() {
+                    console.log('[Perplexity Plugin] Attempting to send code to chat...');
+                    
+                    // Try multiple selectors for Perplexity's input
+                    const selectors = [
+                        'textarea[placeholder*="Ask"]',
+                        'textarea[placeholder*="ask"]', 
+                        'textarea[placeholder*="anything"]',
+                        'textarea[placeholder*="Follow"]',
+                        'textarea',
+                        '[contenteditable="true"]',
+                        'div[role="textbox"]'
+                    ];
+                    
+                    let input = null;
+                    for (const selector of selectors) {
+                        input = document.querySelector(selector);
+                        if (input) {
+                            console.log('[Perplexity Plugin] Found input with selector:', selector);
+                            break;
+                        }
+                    }
+                    
+                    if (input) {
+                        const text = "$fullText";
+                        
+                        if (input.tagName === 'TEXTAREA') {
+                            input.focus();
+                            input.value = text;
+                            input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                            input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+                            console.log('[Perplexity Plugin] Set textarea value');
+                        } else {
+                            input.focus();
+                            input.textContent = text;
+                            input.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: text }));
+                            console.log('[Perplexity Plugin] Set contenteditable text');
+                        }
+                    } else {
+                        console.error('[Perplexity Plugin] Could not find chat input element');
+                    }
+                })();
+            """.trimIndent()
+            
+            browserInstance.cefBrowser.executeJavaScript(script, browserInstance.cefBrowser.url, 0)
+        }
+    }
+    
+    fun focusBrowser() {
+        browser?.component?.requestFocusInWindow()
     }
 
     fun getContent(): JComponent {

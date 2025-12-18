@@ -22,6 +22,11 @@ class PerplexityToolWindowFactory : ToolWindowFactory {
         content.isCloseable = false
         toolWindow.contentManager.addContent(content)
 
-        Disposer.register(content, perplexityPanel::dispose)
+        PerplexityPanelService.getInstance(project).panel = perplexityPanel
+
+        Disposer.register(content) {
+            PerplexityPanelService.getInstance(project).panel = null
+            perplexityPanel.dispose()
+        }
     }
 }
