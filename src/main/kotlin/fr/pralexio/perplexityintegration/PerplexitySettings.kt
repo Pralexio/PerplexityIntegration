@@ -12,6 +12,8 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 )
 class PerplexitySettings : PersistentStateComponent<PerplexitySettings> {
     var sessionToken: String = ""
+    var gpuEnabled: Boolean = false
+    var zoomLevel: Double = 1.0
 
     override fun getState(): PerplexitySettings = this
 

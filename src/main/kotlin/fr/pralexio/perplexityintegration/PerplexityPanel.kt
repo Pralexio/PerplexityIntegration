@@ -27,6 +27,9 @@ class PerplexityPanel {
     private val component: JComponent
     private var tokenExpirationLabel: JLabel? = null
     private var devToolsOpen = false
+    private var gpuButton: JButton? = null
+    private var zoomLabel: JLabel? = null
+    private var currentZoom: Double = 1.0
     
     private val dateFormat by lazy { SimpleDateFormat("MMM dd, yyyy") }
     
@@ -127,10 +130,13 @@ class PerplexityPanel {
         if (JBCefApp.isSupported()) {
             val toolbar = createToolbar()
             containerPanel.add(toolbar, BorderLayout.NORTH)
-
-            loadBrowser()
-
+            
             component = containerPanel
+            
+            // Load browser after component is set up, on EDT
+            ApplicationManager.getApplication().invokeLater {
+                loadBrowser()
+            }
         } else {
             component = JPanel().apply {
                 layout = BorderLayout()
@@ -140,45 +146,82 @@ class PerplexityPanel {
     }
 
     private fun loadBrowser() {
-        if (containerPanel.componentCount > 1) {
-            containerPanel.remove(1)
-        }
-
-        browser?.dispose()
-        
-        // Inject token before loading if available
-        if (settings.sessionToken.isNotEmpty()) {
-            injectSessionToken(settings.sessionToken)
-        }
-
-        browser = JBCefBrowser.createBuilder()
-            .setOffScreenRendering(false)
-            .setUrl("https://www.perplexity.ai")
-            .build()
-
-        browser!!.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
-            override fun onLoadEnd(
-                cefBrowser: CefBrowser?,
-                frame: CefFrame?,
-                httpStatusCode: Int
-            ) {
-                if (frame == null || !frame.isMain) return
-                
-                // Re-inject token on each page load to ensure it persists
-                if (settings.sessionToken.isNotEmpty()) {
-                    injectSessionToken(settings.sessionToken)
-                }
-
-                cefBrowser?.executeJavaScript(darkModeScript, cefBrowser.url, 0)
+        try {
+            if (containerPanel.componentCount > 1) {
+                containerPanel.remove(1)
             }
-        }, browser!!.cefBrowser)
 
-        containerPanel.add(browser!!.component, BorderLayout.CENTER)
-        containerPanel.revalidate()
-        containerPanel.repaint()
+            browser?.dispose()
+            browser = null
+            
+            // Check if JCEF is actually ready
+            if (!JBCefApp.isSupported()) {
+                showBrowserError("JCEF is not supported on this system.")
+                return
+            }
+            
+            // Inject token before loading if available
+            if (settings.sessionToken.isNotEmpty()) {
+                injectSessionToken(settings.sessionToken)
+            }
+            
+            // Load saved zoom level
+            currentZoom = settings.zoomLevel
+
+            // Use simple constructor - more compatible with dev mode
+            val newBrowser = JBCefBrowser("https://www.perplexity.ai")
+
+            newBrowser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
+                override fun onLoadEnd(
+                    cefBrowser: CefBrowser?,
+                    frame: CefFrame?,
+                    httpStatusCode: Int
+                ) {
+                    if (frame == null || !frame.isMain) return
+                    
+                    // Re-inject token on each page load to ensure it persists
+                    if (settings.sessionToken.isNotEmpty()) {
+                        injectSessionToken(settings.sessionToken)
+                    }
+
+                    cefBrowser?.executeJavaScript(darkModeScript, cefBrowser.url, 0)
+                    
+                    // Apply saved zoom level
+                    applyZoom()
+                }
+            }, newBrowser.cefBrowser)
+
+            browser = newBrowser
+            
+            // Add component directly
+            containerPanel.add(newBrowser.component, BorderLayout.CENTER)
+            containerPanel.revalidate()
+            containerPanel.repaint()
+        } catch (e: Exception) {
+            showBrowserError("Failed to load browser: ${e.message}")
+        }
+    }
+    
+    private fun showBrowserError(message: String) {
+        ApplicationManager.getApplication().invokeLater {
+            val errorLabel = JLabel("<html><center>$message<br>Try clicking Reload or restart the IDE.</center></html>")
+            errorLabel.horizontalAlignment = SwingConstants.CENTER
+            if (containerPanel.componentCount > 1) {
+                containerPanel.remove(1)
+            }
+            containerPanel.add(errorLabel, BorderLayout.CENTER)
+            containerPanel.revalidate()
+            containerPanel.repaint()
+        }
     }
 
     private fun reloadBrowser() {
+        if (browser == null) {
+            // Browser not loaded yet, try to load it
+            loadBrowser()
+            return
+        }
+        
         browser?.let { browserInstance ->
             // Re-inject token before reload
             if (settings.sessionToken.isNotEmpty()) {
@@ -222,12 +265,49 @@ class PerplexityPanel {
         devToolsButton.addActionListener {
             toggleDevTools()
         }
+        
+        // GPU Toggle button
+        gpuButton = JButton(if (settings.gpuEnabled) "GPU: ON" else "GPU: OFF")
+        gpuButton?.addActionListener {
+            toggleGpu()
+        }
+        
+        // Zoom controls
+        val zoomOutButton = JButton("-")
+        zoomOutButton.toolTipText = "Zoom Out"
+        zoomOutButton.addActionListener {
+            zoomOut()
+        }
+        
+        zoomLabel = JLabel("${(settings.zoomLevel * 100).toInt()}%")
+        
+        val zoomInButton = JButton("+")
+        zoomInButton.toolTipText = "Zoom In"
+        zoomInButton.addActionListener {
+            zoomIn()
+        }
+        
+        val zoomResetButton = JButton("100%")
+        zoomResetButton.toolTipText = "Reset Zoom"
+        zoomResetButton.addActionListener {
+            resetZoom()
+        }
 
         toolbar.add(setTokenButton)
         toolbar.add(clearTokenButton)
         toolbar.add(reloadButton)
         toolbar.add(helpButton)
         toolbar.add(devToolsButton)
+        toolbar.add(gpuButton)
+        
+        // Zoom controls separator
+        toolbar.add(Box.createHorizontalStrut(10))
+        toolbar.add(JLabel("|"))
+        toolbar.add(Box.createHorizontalStrut(5))
+        toolbar.add(zoomOutButton)
+        toolbar.add(zoomLabel)
+        toolbar.add(zoomInButton)
+        toolbar.add(zoomResetButton)
 
         // Add token expiration label
         tokenExpirationLabel = JLabel()
@@ -455,6 +535,54 @@ class PerplexityPanel {
         }
     }
     
+    private fun toggleGpu() {
+        settings.gpuEnabled = !settings.gpuEnabled
+        gpuButton?.text = if (settings.gpuEnabled) "GPU: ON" else "GPU: OFF"
+        
+        notificationGroup
+            .createNotification(
+                "GPU ${if (settings.gpuEnabled) "Enabled" else "Disabled"}",
+                "Please restart the IDE for the change to take effect.",
+                NotificationType.INFORMATION
+            )
+            .notify(null)
+    }
+    
+    private fun zoomIn() {
+        if (currentZoom < 2.0) {
+            currentZoom += 0.1
+            settings.zoomLevel = currentZoom
+            applyZoom()
+            updateZoomLabel()
+        }
+    }
+    
+    private fun zoomOut() {
+        if (currentZoom > 0.5) {
+            currentZoom -= 0.1
+            settings.zoomLevel = currentZoom
+            applyZoom()
+            updateZoomLabel()
+        }
+    }
+    
+    private fun resetZoom() {
+        currentZoom = 1.0
+        settings.zoomLevel = currentZoom
+        applyZoom()
+        updateZoomLabel()
+    }
+    
+    private fun applyZoom() {
+        browser?.let { browserInstance ->
+            browserInstance.cefBrowser.zoomLevel = currentZoom - 1.0
+        }
+    }
+    
+    private fun updateZoomLabel() {
+        zoomLabel?.text = "${(currentZoom * 100).toInt()}%"
+    }
+    
     fun sendCodeToChat(code: String, language: String = "") {
         browser?.let { browserInstance ->
             val escapedCode = code
@@ -466,8 +594,8 @@ class PerplexityPanel {
                 .replace("\n", "\\n")
                 .replace("\r", "")
             
-            val langTag = if (language.isNotEmpty()) language else ""
-            val fullText = "```$langTag\\n$escapedCode\\n```"
+            val langInfo = if (language.isNotEmpty()) " ($language)" else ""
+            val fullText = "Here is my code$langInfo:\\n\\n$escapedCode"
             
             val script = """
                 (function() {

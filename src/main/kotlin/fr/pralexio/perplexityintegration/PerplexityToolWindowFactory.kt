@@ -9,7 +9,10 @@ import com.intellij.ui.content.ContentFactory
 class PerplexityToolWindowFactory : ToolWindowFactory {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        System.setProperty("ide.browser.jcef.gpu.disable", "true")
+        val settings = PerplexitySettings.getInstance()
+        
+        // Apply GPU setting based on user preference
+        System.setProperty("ide.browser.jcef.gpu.disable", if (settings.gpuEnabled) "false" else "true")
         System.setProperty("ide.browser.jcef.sandbox.enable", "false")
         System.setProperty("ide.browser.jcef.darkTheme.enabled", "true")
 

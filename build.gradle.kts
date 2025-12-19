@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.pralexio.perplexityintegration"
-version = "1.6"
+version = "1.7"
 
 repositories {
     mavenCentral()
@@ -18,7 +18,7 @@ dependencies {
     intellijPlatform {
         create("IC", "2025.1.4.1")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
-
+        jetbrainsRuntime()
     }
 }
 
