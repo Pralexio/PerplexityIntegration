@@ -68,7 +68,7 @@ class PerplexityPanel {
                 document.documentElement.classList.remove('light');
                 document.documentElement.classList.add('dark');
                 
-                // Inject persistent dark mode CSS
+                // Inject persistent dark mode CSS and performance optimizations
                 let style = document.getElementById('force-dark-mode-plugin');
                 if (!style) {
                     style = document.createElement('style');
@@ -84,6 +84,37 @@ class PerplexityPanel {
                         html.light, body.light, [data-theme="light"], [data-color-mode="light"] {
                             background-color: #191a1a !important;
                             color-scheme: dark !important;
+                        }
+                        
+                        /* Performance optimizations - disable animations */
+                        *, *::before, *::after {
+                            animation-duration: 0.001ms !important;
+                            animation-delay: 0ms !important;
+                            transition-duration: 0.001ms !important;
+                            transition-delay: 0ms !important;
+                        }
+                        
+                        /* Disable smooth scrolling for performance */
+                        html, body {
+                            scroll-behavior: auto !important;
+                        }
+                        
+                        /* Reduce motion for all elements */
+                        @media (prefers-reduced-motion: no-preference) {
+                            *, *::before, *::after {
+                                animation-duration: 0.001ms !important;
+                                transition-duration: 0.001ms !important;
+                            }
+                        }
+                        
+                        /* Disable loading spinners animation */
+                        [class*="loading"], [class*="spinner"], [class*="pulse"], [class*="animate"] {
+                            animation: none !important;
+                        }
+                        
+                        /* Optimize rendering */
+                        * {
+                            will-change: auto !important;
                         }
                     `;
                     document.head.appendChild(style);

@@ -46,6 +46,7 @@
             <li><b>Fixed:</b> Code sent to chat no longer includes markdown backticks</li>
             <li><b>Improved:</b> Better browser error handling and reload functionality</li>
             <li><b>Improved:</b> Added JetBrains Runtime dependency for JCEF compatibility</li>
+            <li><b>Improved:</b> Performance optimizations - disabled CSS animations and transitions</li>
         </ul>
         
         <h3>Version 1.6</h3>
@@ -79,7 +80,6 @@
                            isLogByDefault="true"/>
 
         <applicationService serviceImplementation="fr.pralexio.perplexityintegration.PerplexitySettings"/>
-        <projectService serviceImplementation="fr.pralexio.perplexityintegration.PerplexityPanelService"/>
     </extensions>
 
     <actions>
