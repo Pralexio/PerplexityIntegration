@@ -1,5 +1,9 @@
 # Perplexity AI Chat for IntelliJ IDEA
 
+[![Get from Marketplace](https://img.shields.io/jetbrains/plugin/v/28929?label=Perplexity&color=blue)](https://plugins.jetbrains.com/plugin/28929)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/28929?label=downloads)](https://plugins.jetbrains.com/plugin/28929)
+![Rating](https://img.shields.io/badge/rating-4.3★-brightgreen)
+
 Access Perplexity AI directly in your IDE without switching windows. Get instant AI-powered answers, code explanations, and research assistance while you develop.
 
 ![Perplexity Integration Demo](https://raw.githubusercontent.com/Pralexio/PerplexityIntegration/refs/heads/main/screenshot.png)
@@ -17,9 +21,6 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 
 ### Via JetBrains Marketplace
 
-[![Get from Marketplace](https://img.shields.io/jetbrains/plugin/v/28929?label=Perplexity&color=blue)](https://plugins.jetbrains.com/plugin/28929)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/28929?label=downloads)](https://plugins.jetbrains.com/plugin/28929)
-![Rating](https://img.shields.io/badge/rating-4.3★-brightgreen)
 1. Open IntelliJ IDEA
 2. Go to **Settings/Preferences** → **Plugins**
 3. Click on **Marketplace** tab
