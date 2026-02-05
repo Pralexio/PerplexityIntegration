@@ -1,95 +1,72 @@
 <idea-plugin>
     <id>fr.pralexio.perplexityintegration</id>
     <name>Perplexity AI Chat</name>
-    <vendor email="contact@pralexio.fr" url="https://github.com/pralexio">pralexio</vendor>
-    <version>1.7</version>
-    
+    <vendor email="contact@pralexio.fr" url="https://github.com/Pralexio/PerplexityIntegration">Pralexio</vendor>
+    <version>1.8</version>
+
     <description><![CDATA[
-        Access Perplexity AI directly in your IDE without switching windows.
-        
-        <br/><br/>
-        
-        <b>Features:</b>
+        <h3>Integrate Perplexity AI directly into your IDE</h3>
+        <p>This plugin embeds Perplexity AI into IntelliJ-based IDEs, allowing you to:</p>
         <ul>
-            <li><b>Embedded Browser</b> - Full Perplexity experience in a tool window</li>
-            <li><b>Send Code to Chat</b> - Select code and send it directly to Perplexity (Ctrl+Alt+P)</li>
-            <li><b>GPU Acceleration</b> - Toggle GPU rendering for better performance</li>
-            <li><b>Zoom Controls</b> - Zoom in/out with persistent settings</li>
-            <li><b>Dark Mode</b> - Automatic dark theme to match your IDE</li>
-            <li><b>Session Persistence</b> - Stay logged in across IDE restarts</li>
-            <li><b>DevTools</b> - Built-in browser developer tools for debugging</li>
+            <li>Browse Perplexity AI without leaving your IDE</li>
+            <li>Send selected code to Perplexity chat with Ctrl+Shift+P</li>
+            <li>Automatic dark mode support</li>
+            <li>Session token management for persistent login</li>
+            <li>Adjustable zoom controls</li>
+            <li>Developer tools access for debugging</li>
         </ul>
-        
-        <b>How to Use:</b>
-        <ol>
-            <li>Open the <b>Perplexity</b> tool window from the right sidebar</li>
-            <li>Login with your Perplexity account (Google, Apple, or Email)</li>
-            <li>Start chatting! Select code and press <b>Ctrl+Alt+P</b> to send it to Perplexity</li>
-        </ol>
-        
-        <b>Keyboard Shortcuts:</b>
+        <p><strong>Features:</strong></p>
         <ul>
-            <li><b>Ctrl+Alt+P</b> - Send selected code to Perplexity</li>
+            <li>Native tool window integration</li>
+            <li>Context menu action for sending code</li>
+            <li>Persistent settings (zoom level, session token)</li>
+            <li>Off-screen rendering for Windows compatibility</li>
         </ul>
-        
-        <br/>
-        <em>Requires JCEF support (included in most JetBrains IDEs).</em>
     ]]></description>
-    
+
     <change-notes><![CDATA[
-        <h3>Version 1.7</h3>
+        <h3>Version 1.8</h3>
         <ul>
-            <li><b>New:</b> GPU acceleration toggle - Enable/disable GPU rendering for better performance</li>
-            <li><b>New:</b> Zoom controls - Zoom in/out (+/-) with persistent settings</li>
-            <li><b>Fixed:</b> Send to Perplexity now works correctly (service registration fix)</li>
-            <li><b>Fixed:</b> Context menu icon displays at correct size (16x16 SVG)</li>
-            <li><b>Fixed:</b> Code sent to chat no longer includes markdown backticks</li>
-            <li><b>Improved:</b> Better browser error handling and reload functionality</li>
-            <li><b>Improved:</b> Added JetBrains Runtime dependency for JCEF compatibility</li>
-            <li><b>Improved:</b> Performance optimizations - disabled CSS animations and transitions</li>
-        </ul>
-        
-        <h3>Version 1.6</h3>
-        <ul>
-            <li><b>New:</b> Send selected code to Perplexity with right-click or Ctrl+Alt+P</li>
-            <li><b>New:</b> DevTools button for browser debugging</li>
-            <li><b>Improved:</b> Dark mode now persists and won't revert to light theme</li>
-            <li><b>Improved:</b> Token login reliability with validation</li>
-            <li><b>Improved:</b> Performance optimizations</li>
-        </ul>
-        
-        <h3>Version 1.5</h3>
-        <ul>
-            <li>Initial release with embedded Perplexity browser</li>
-            <li>Session token support for persistent login</li>
-            <li>Dark mode enforcement</li>
+            <li><strong>NEW:</strong> Dedicated Settings dialog for cleaner UI</li>
+            <li><strong>NEW:</strong> Better error notifications for "Send to Perplexity" action</li>
+            <li><strong>NEW:</strong> Success notifications showing line count when sending code</li>
+            <li><strong>IMPROVED:</strong> Native dark mode using matchMedia override</li>
+            <li><strong>IMPROVED:</strong> Simplified toolbar with Settings button</li>
+            <li><strong>IMPROVED:</strong> Better diagnostics for action failures</li>
+            <li><strong>FIXED:</strong> JCEF initialization issues on Windows</li>
+            <li><strong>FIXED:</strong> Dark mode persistence across page loads</li>
         </ul>
     ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <applicationService
+                serviceImplementation="fr.pralexio.perplexityintegration.PerplexitySettings"/>
+        <applicationConfigurable
+                parentId="tools"
+                instance="fr.pralexio.perplexityintegration.PerplexityConfigurable"
+                id="fr.pralexio.perplexityintegration.PerplexityConfigurable"
+                displayName="Perplexity AI"/>
         <toolWindow
                 id="Perplexity"
                 anchor="right"
                 icon="/icons/perplexity.png"
                 factoryClass="fr.pralexio.perplexityintegration.PerplexityToolWindowFactory"/>
-
-        <notificationGroup id="Perplexity.Notifications"
-                           displayType="BALLOON"
-                           isLogByDefault="true"/>
-
-        <applicationService serviceImplementation="fr.pralexio.perplexityintegration.PerplexitySettings"/>
+        <notificationGroup
+                id="Perplexity.Notifications"
+                displayType="BALLOON"/>
     </extensions>
 
     <actions>
-        <action id="Perplexity.SendToChat"
+        <action
+                id="SendToPerplexity"
                 class="fr.pralexio.perplexityintegration.SendToPerplexityAction"
                 text="Send to Perplexity"
                 description="Send selected code to Perplexity chat"
                 icon="/icons/perplexity_action.svg">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt P"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift P"/>
         </action>
     </actions>
 </idea-plugin>

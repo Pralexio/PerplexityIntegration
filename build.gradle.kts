@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "fr.pralexio.perplexityintegration"
-version = "1.7"
+version = "1.8"
 
 repositories {
     mavenCentral()
@@ -38,6 +38,13 @@ tasks {
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
+    }
+
+    named<JavaExec>("runIde") {
+        jvmArgs(
+            "-Dide.browser.jcef.osr.enabled=true",
+            "-Dide.browser.jcef.gpu.disable=true"
+        )
     }
 }
 
