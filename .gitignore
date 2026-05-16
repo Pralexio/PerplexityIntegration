@@ -43,3 +43,4 @@ bin/
 .DS_Store
 .intellijPlatform/self-update.lock
 .claude/worktrees/thirsty-perlman-b011b2/
+/.intellijPlatform

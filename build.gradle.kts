@@ -30,7 +30,7 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <h3>Version 1.8</h3>
+            <h3>Version 1.9</h3>
             <ul>
                 <li><strong>NEW:</strong> Dedicated Settings dialog for cleaner UI</li>
                 <li><strong>NEW:</strong> Better error notifications for "Send to Perplexity" action</li>
