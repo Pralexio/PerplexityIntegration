@@ -20,41 +20,77 @@ class PerplexityCredentialStore {
         cached?.let { return it }
         return synchronized(this) {
             cached?.let { return@synchronized it }
+
             val stored = readSecure()
-            val token = if (stored.isNotEmpty()) {
-                stored
-            } else {
-                migrateLegacyTokenIfNeeded()
+            if (stored.isNotEmpty()) {
+                log.info("Perplexity token loaded from PasswordSafe (length=${stored.length}).")
+                cached = stored
+                return@synchronized stored
             }
-            cached = token
-            token
+
+            val legacy = PerplexitySettings.getInstance().sessionToken
+            if (legacy.isEmpty()) {
+                cached = ""
+                return@synchronized ""
+            }
+
+            // Legacy XML token exists but PasswordSafe is empty.
+            // Try to migrate, but only clear the XML if we can verify persistence.
+            tryMigrateLegacy(legacy)
+            cached = legacy
+            log.info("Perplexity token loaded from legacy XML storage (length=${legacy.length}).")
+            legacy
         }
     }
 
     fun setToken(token: String) {
         synchronized(this) {
-            writeSecure(token)
             cached = token
-            // Ensure the legacy XML field never lingers after a save.
             val legacy = PerplexitySettings.getInstance()
-            if (legacy.sessionToken.isNotEmpty()) {
-                legacy.sessionToken = ""
+
+            if (PasswordSafe.instance.isMemoryOnly) {
+                // PasswordSafe will lose this on restart. Keep XML as the persistent store.
+                legacy.sessionToken = token
+                writeSecure(token) // in-memory, helps in-session lookups
+                log.info("Perplexity token saved to legacy XML (PasswordSafe is memory-only).")
+                return@synchronized
+            }
+
+            writeSecure(token)
+
+            if (token.isEmpty()) {
+                if (legacy.sessionToken.isNotEmpty()) legacy.sessionToken = ""
+                return@synchronized
+            }
+
+            // Verify the secure store actually round-trips before clearing the XML fallback.
+            val verified = readSecure() == token
+            if (verified) {
+                if (legacy.sessionToken.isNotEmpty()) legacy.sessionToken = ""
+                log.info("Perplexity token saved to PasswordSafe (verified, length=${token.length}).")
+            } else {
+                legacy.sessionToken = token
+                log.warn("PasswordSafe write was not readable back; keeping XML fallback (length=${token.length}).")
             }
         }
     }
 
-    private fun migrateLegacyTokenIfNeeded(): String {
-        val legacy = PerplexitySettings.getInstance()
-        val legacyToken = legacy.sessionToken
-        if (legacyToken.isEmpty()) return ""
-        return try {
+    private fun tryMigrateLegacy(legacyToken: String) {
+        if (PasswordSafe.instance.isMemoryOnly) {
+            log.info("Skipping legacy migration: PasswordSafe is in memory-only mode; XML stays as the store.")
+            return
+        }
+        try {
             writeSecure(legacyToken)
-            legacy.sessionToken = ""
-            log.info("Migrated Perplexity session token from XML storage to PasswordSafe.")
-            legacyToken
+            val verified = readSecure() == legacyToken
+            if (verified) {
+                PerplexitySettings.getInstance().sessionToken = ""
+                log.info("Migrated Perplexity session token from XML to PasswordSafe.")
+            } else {
+                log.warn("PasswordSafe round-trip failed during migration; keeping XML token.")
+            }
         } catch (e: Exception) {
-            log.warn("Failed to migrate Perplexity session token to PasswordSafe; keeping legacy value.", e)
-            legacyToken
+            log.warn("Migration to PasswordSafe failed; keeping XML token.", e)
         }
     }
 
@@ -68,11 +104,15 @@ class PerplexityCredentialStore {
     }
 
     private fun writeSecure(token: String) {
-        val attrs = credentialAttributes()
-        if (token.isEmpty()) {
-            PasswordSafe.instance.set(attrs, null)
-        } else {
-            PasswordSafe.instance.set(attrs, Credentials(USERNAME, token))
+        try {
+            val attrs = credentialAttributes()
+            if (token.isEmpty()) {
+                PasswordSafe.instance.set(attrs, null)
+            } else {
+                PasswordSafe.instance.set(attrs, Credentials(USERNAME, token))
+            }
+        } catch (e: Exception) {
+            log.warn("Failed to write Perplexity session token to PasswordSafe", e)
         }
     }
 

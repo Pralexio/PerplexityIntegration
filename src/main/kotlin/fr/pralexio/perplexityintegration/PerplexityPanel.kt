@@ -349,6 +349,10 @@ class PerplexityPanel : Disposable {
 
     private fun injectSessionToken(token: String) {
         try {
+            if (token.isBlank()) {
+                log.warn("injectSessionToken called with blank token; skipping cookie set.")
+                return
+            }
             val cookieManager = CefCookieManager.getGlobalManager()
             val expirationDate = Date(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)
 
@@ -364,7 +368,7 @@ class PerplexityPanel : Disposable {
                 true,
                 expirationDate
             )
-            cookieManager.setCookie("https://www.perplexity.ai", cookie)
+            val ok1 = cookieManager.setCookie("https://www.perplexity.ai", cookie)
 
             val wwwCookie = CefCookie(
                 "__Secure-next-auth.session-token",
@@ -378,7 +382,9 @@ class PerplexityPanel : Disposable {
                 true,
                 expirationDate
             )
-            cookieManager.setCookie("https://www.perplexity.ai", wwwCookie)
+            val ok2 = cookieManager.setCookie("https://www.perplexity.ai", wwwCookie)
+            cookieManager.flushStore(null)
+            log.info("Injected Perplexity session cookie (len=${token.length}, dotDomain=$ok1, wwwDomain=$ok2).")
         } catch (e: Exception) {
             log.warn("Failed to inject Perplexity session cookie", e)
         }
