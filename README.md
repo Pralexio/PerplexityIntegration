@@ -12,6 +12,11 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 
 - 🚀 **Embedded Browser** - Full Perplexity experience in a tool window
 - 💻 **Send Code to Chat** - Select code and send it directly to Perplexity (`Ctrl+Shift+P`)
+- 🎯 **Prompt Actions** - Built-in actions for *Explain*, *Find Bugs*, *Optimize*, *Write Tests*, *Refactor*, *Add Comments*
+- ⚡ **Scroll Speed Boost** - Adjustable multiplier (1.0x – 8.0x) to compensate for JCEF off-screen rendering
+- 🔒 **Secure Token Storage** - Session token stored in the IDE's PasswordSafe (OS-encrypted)
+- ⚠️ **Privacy Warning** - One-time confirmation before code leaves the IDE
+- 🔄 **Retry on Failure** - Clear error overlay with a retry button when Perplexity is unreachable
 - 🌙 **Native Dark Mode** - Automatic dark theme synchronized with your IDE
 - 🔐 **Session Persistence** - Stay logged in across IDE restarts
 - 🎯 **Smart Notifications** - Get feedback when sending code (with line count)
@@ -58,9 +63,17 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 
 3. **Send Code to Perplexity**
    - Select code in your editor
-   - Right-click → **"Send to Perplexity"** or press `Ctrl+Shift+P`
-   - The code will appear in the Perplexity chat input
-   - You'll get a notification confirming the send (with line count)
+   - Right-click → **Perplexity ▶** to pick an action:
+     - **Send Selection** (or press `Ctrl+Shift+P`) — sends the raw code
+     - **Explain Selection** — detailed explanation of what the code does
+     - **Find Bugs** — bug, edge-case and race-condition review
+     - **Optimize** — performance and readability suggestions
+     - **Write Tests** — unit test generation
+     - **Refactor** — readability/maintainability refactor (behavior preserved)
+     - **Add Comments** — adds inline comments for the non-obvious parts
+   - The code appears in the Perplexity chat prefixed with the matching prompt
+   - A notification confirms the send (with line count)
+   - The first time, a one-time privacy confirmation dialog is shown
 
 ## 🛠️ Toolbar Features
 
@@ -76,9 +89,9 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+Shift+P` | Send selected code to Perplexity |
+| `Ctrl+Shift+P` | Send selected code to Perplexity (raw) |
 
-> **Note:** The editor must have focus for the shortcut to work.
+> **Note:** The editor must have focus for the shortcut to work. The other prompt actions (Explain, Find Bugs, etc.) are available from the **Perplexity ▶** sub-menu on right-click — you can bind your own shortcuts via **Settings → Keymap**.
 
 ## ⚙️ Requirements
 
@@ -88,15 +101,18 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 
 ## 🐛 Known Limitations
 
-- **Scroll Speed:** Mouse wheel scrolling may feel slower than native browsers. This is a known limitation of JCEF with off-screen rendering (required for Windows compatibility) and cannot be fixed at the plugin level.
+- **Scroll Speed (mitigated in v1.9):** JCEF off-screen rendering scrolls slower than a native browser. v1.9 adds a JavaScript-level scroll multiplier (Settings → Tools → Perplexity AI, default 3.0x, range 1.0x – 8.0x) that compensates for most of the slowdown. Increase the multiplier if it still feels too slow.
+- **Google / Apple Sign-In:** Google and Apple block OAuth flows inside embedded browsers (CEF/JCEF) as a security policy — this cannot be worked around at the plugin level. Use the **email login** (Perplexity sends a one-time code, even for Google-linked accounts) or the **session token** method instead.
 
 ## ⚙️ Settings
 
 Access via **Tools → Perplexity AI** or the **⚙ Settings** button in the toolbar:
 
-- **Session Token:** Manually set your Perplexity authentication token
+- **Session Token:** Manually set your Perplexity authentication token (stored in the IDE's PasswordSafe — OS-encrypted, not in plain XML)
+- **Scroll Speed Multiplier:** Adjust mouse wheel scroll speed inside the panel (1.0x – 8.0x, default 3.0x). Applied live, no reload required.
 - **GPU Acceleration:** Enable/disable hardware acceleration (may help with performance on some systems)
 - **Zoom Level:** Persistent zoom setting (also adjustable via toolbar)
+- **Reset Privacy Warning:** Show the send confirmation dialog again on the next "Send to Perplexity" action
 
 ## 🤝 Contributing
 
@@ -140,7 +156,19 @@ Please include:
 
 ## 📝 Changelog
 
-### v1.8 (Latest)
+### v1.9 (Latest)
+- ✨ **New:** "Perplexity ▶" sub-menu in the editor right-click with six prompt actions: *Explain*, *Find Bugs*, *Optimize*, *Write Tests*, *Refactor*, *Add Comments*. `Ctrl+Shift+P` still triggers the raw send.
+- ⚡ **New:** Scroll speed multiplier (1.0x – 8.0x, default 3.0x) — workaround for the slow JCEF off-screen rendering scroll. Live update from Settings without reload.
+- 🔒 **New:** Session token migrated to PasswordSafe (Windows DPAPI / macOS Keychain / Linux Secret Service). Existing tokens migrate automatically on first launch.
+- ⚠️ **New:** Privacy confirmation dialog before the first "Send to Perplexity", with a *Reset privacy warning* button in Settings.
+- 🔄 **New:** Failure overlay with a **Retry** button when Perplexity can't be loaded (network down, captive portal, etc.) instead of a blank page.
+- 🛠️ **Improved:** Platform compatibility for IntelliJ 2024.1+ (`getActionUpdateThread`, `DumbAware`, proper `Disposable` with handler cleanup).
+- 🎨 **Improved:** Tool window icon switched to SVG (HiDPI / theme-aware).
+- 🔍 **Improved:** Logger replaces silent `catch` blocks — `idea.log` now contains useful diagnostics.
+- 🏗️ **Build:** Version, `sinceBuild`, and change notes centralized in `gradle.properties` and injected via `patchPluginXml`.
+- 🐛 **Fixed:** Marketplace change notes previously stuck on "Initial version".
+
+### v1.8
 - ✨ **New:** Dedicated Settings dialog for cleaner UI
 - ✨ **New:** Smart notifications with error diagnostics for "Send to Perplexity"
 - ✨ **New:** Success notifications showing line count when sending code
