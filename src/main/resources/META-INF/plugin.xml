@@ -2,7 +2,6 @@
     <id>fr.pralexio.perplexityintegration</id>
     <name>Perplexity AI Chat</name>
     <vendor email="contact@pralexio.fr" url="https://github.com/Pralexio/PerplexityIntegration">Pralexio</vendor>
-    <version>1.8</version>
 
     <description><![CDATA[
         <h3>Integrate Perplexity AI directly into your IDE</h3>
@@ -24,25 +23,13 @@
         </ul>
     ]]></description>
 
-    <change-notes><![CDATA[
-        <h3>Version 1.8</h3>
-        <ul>
-            <li><strong>NEW:</strong> Dedicated Settings dialog for cleaner UI</li>
-            <li><strong>NEW:</strong> Better error notifications for "Send to Perplexity" action</li>
-            <li><strong>NEW:</strong> Success notifications showing line count when sending code</li>
-            <li><strong>IMPROVED:</strong> Native dark mode using matchMedia override</li>
-            <li><strong>IMPROVED:</strong> Simplified toolbar with Settings button</li>
-            <li><strong>IMPROVED:</strong> Better diagnostics for action failures</li>
-            <li><strong>FIXED:</strong> JCEF initialization issues on Windows</li>
-            <li><strong>FIXED:</strong> Dark mode persistence across page loads</li>
-        </ul>
-    ]]></change-notes>
-
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <applicationService
                 serviceImplementation="fr.pralexio.perplexityintegration.PerplexitySettings"/>
+        <applicationService
+                serviceImplementation="fr.pralexio.perplexityintegration.PerplexityCredentialStore"/>
         <applicationConfigurable
                 parentId="tools"
                 instance="fr.pralexio.perplexityintegration.PerplexityConfigurable"
@@ -51,7 +38,7 @@
         <toolWindow
                 id="Perplexity"
                 anchor="right"
-                icon="/icons/perplexity.png"
+                icon="/icons/perplexity_action.svg"
                 factoryClass="fr.pralexio.perplexityintegration.PerplexityToolWindowFactory"/>
         <notificationGroup
                 id="Perplexity.Notifications"
@@ -59,14 +46,51 @@
     </extensions>
 
     <actions>
-        <action
-                id="SendToPerplexity"
-                class="fr.pralexio.perplexityintegration.SendToPerplexityAction"
-                text="Send to Perplexity"
-                description="Send selected code to Perplexity chat"
-                icon="/icons/perplexity_action.svg">
+        <group
+                id="Perplexity.SendGroup"
+                text="Perplexity"
+                description="Send selected code to Perplexity"
+                icon="/icons/perplexity_action.svg"
+                popup="true">
+            <action
+                    id="SendToPerplexity"
+                    class="fr.pralexio.perplexityintegration.SendToPerplexityAction"
+                    text="Send Selection"
+                    description="Send selected code to Perplexity chat">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift P"/>
+            </action>
+            <separator/>
+            <action
+                    id="Perplexity.Explain"
+                    class="fr.pralexio.perplexityintegration.PerplexityExplainAction"
+                    text="Explain Selection"
+                    description="Ask Perplexity to explain the selected code"/>
+            <action
+                    id="Perplexity.FindBugs"
+                    class="fr.pralexio.perplexityintegration.PerplexityFindBugsAction"
+                    text="Find Bugs"
+                    description="Ask Perplexity to look for bugs and edge cases"/>
+            <action
+                    id="Perplexity.Optimize"
+                    class="fr.pralexio.perplexityintegration.PerplexityOptimizeAction"
+                    text="Optimize"
+                    description="Ask Perplexity to suggest optimizations"/>
+            <action
+                    id="Perplexity.WriteTests"
+                    class="fr.pralexio.perplexityintegration.PerplexityWriteTestsAction"
+                    text="Write Tests"
+                    description="Ask Perplexity to generate unit tests"/>
+            <action
+                    id="Perplexity.Refactor"
+                    class="fr.pralexio.perplexityintegration.PerplexityRefactorAction"
+                    text="Refactor"
+                    description="Ask Perplexity to refactor the selection"/>
+            <action
+                    id="Perplexity.AddComments"
+                    class="fr.pralexio.perplexityintegration.PerplexityAddCommentsAction"
+                    text="Add Comments"
+                    description="Ask Perplexity to add explanatory comments"/>
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift P"/>
-        </action>
+        </group>
     </actions>
 </idea-plugin>

@@ -14,6 +14,8 @@ class PerplexitySettings : PersistentStateComponent<PerplexitySettings> {
     var sessionToken: String = ""
     var gpuEnabled: Boolean = false
     var zoomLevel: Double = 1.0
+    var firstSendConfirmed: Boolean = false
+    var scrollSpeedMultiplier: Double = 3.0
 
     override fun getState(): PerplexitySettings = this
 

@@ -3,6 +3,7 @@ package fr.pralexio.perplexityintegration
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBLabel
@@ -18,16 +19,23 @@ import java.awt.Font
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.swing.*
+import javax.swing.event.ChangeListener
 
 class PerplexityConfigurable : Configurable {
 
     private val settings = PerplexitySettings.getInstance()
+    private val credentials = PerplexityCredentialStore.getInstance()
     private var tokenField: JBPasswordField? = null
     private var gpuCheckbox: JBCheckBox? = null
     private var expirationLabel: JBLabel? = null
+    private var scrollSpeedSlider: JSlider? = null
+    private var scrollSpeedLabel: JBLabel? = null
     private var modified = false
 
-    private val dateFormat = SimpleDateFormat("MMM dd, yyyy")
+    private fun sliderToFactor(v: Int): Double = v / 10.0
+    private fun factorToSlider(f: Double): Int = (f * 10).toInt().coerceIn(10, 80)
+
+    private val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.ENGLISH)
 
     private val notificationGroup by lazy {
         NotificationGroupManager.getInstance().getNotificationGroup("Perplexity.Notifications")
@@ -40,7 +48,7 @@ class PerplexityConfigurable : Configurable {
         mainPanel.border = JBUI.Borders.empty(10)
 
         tokenField = JBPasswordField()
-        tokenField?.text = settings.sessionToken
+        tokenField?.text = credentials.getToken()
         tokenField?.preferredSize = Dimension(500, 30)
         tokenField?.document?.addDocumentListener(object : javax.swing.event.DocumentListener {
             override fun insertUpdate(e: javax.swing.event.DocumentEvent?) { modified = true; updateExpirationLabel() }
@@ -88,6 +96,31 @@ class PerplexityConfigurable : Configurable {
         gpuCheckbox?.isSelected = settings.gpuEnabled
         gpuCheckbox?.addActionListener { modified = true }
 
+        val resetPrivacyButton = JButton("Reset privacy warning")
+        resetPrivacyButton.toolTipText = "Show the \"send to Perplexity\" confirmation dialog again on next use"
+        resetPrivacyButton.addActionListener {
+            settings.firstSendConfirmed = false
+            Messages.showInfoMessage(
+                "The send confirmation will be shown again on your next Send to Perplexity action.",
+                "Privacy Warning Reset"
+            )
+        }
+
+        scrollSpeedLabel = JBLabel(formatScrollLabel(settings.scrollSpeedMultiplier))
+        scrollSpeedSlider = JSlider(10, 80, factorToSlider(settings.scrollSpeedMultiplier)).apply {
+            majorTickSpacing = 10
+            minorTickSpacing = 5
+            paintTicks = true
+            toolTipText = "Workaround for slow JCEF scrolling. 1.0x = native CEF speed, 8.0x = very fast."
+            addChangeListener(ChangeListener {
+                val v = sliderToFactor(value)
+                scrollSpeedLabel?.text = formatScrollLabel(v)
+                modified = true
+            })
+        }
+        val scrollHelp = JBLabel("Browser scroll speed (workaround for slow JCEF off-screen rendering)")
+        scrollHelp.foreground = JBUI.CurrentTheme.ContextHelp.FOREGROUND
+
         val instructionsText = JTextArea()
         instructionsText.text = """
     Login Methods:
@@ -118,7 +151,13 @@ class PerplexityConfigurable : Configurable {
             .addVerticalGap(20)
             .addSeparator()
             .addVerticalGap(10)
+            .addComponent(scrollHelp)
+            .addComponent(scrollSpeedLabel!!)
+            .addComponent(scrollSpeedSlider!!)
+            .addVerticalGap(10)
             .addComponent(gpuCheckbox!!)
+            .addVerticalGap(10)
+            .addComponent(resetPrivacyButton)
             .addComponentFillVertically(JPanel(), 0)
             .panel
 
@@ -143,15 +182,19 @@ class PerplexityConfigurable : Configurable {
 
     override fun isModified(): Boolean {
         val currentToken = String(tokenField?.password ?: charArrayOf())
+        val sliderFactor = scrollSpeedSlider?.let { sliderToFactor(it.value) } ?: settings.scrollSpeedMultiplier
         return modified ||
-                currentToken != settings.sessionToken ||
-                gpuCheckbox?.isSelected != settings.gpuEnabled
+                currentToken != credentials.getToken() ||
+                gpuCheckbox?.isSelected != settings.gpuEnabled ||
+                sliderFactor != settings.scrollSpeedMultiplier
     }
 
     override fun apply() {
         val newToken = String(tokenField?.password ?: charArrayOf()).trim()
-        val tokenChanged = newToken != settings.sessionToken
+        val tokenChanged = newToken != credentials.getToken()
         val gpuChanged = gpuCheckbox?.isSelected != settings.gpuEnabled
+        val newScrollFactor = scrollSpeedSlider?.let { sliderToFactor(it.value) } ?: settings.scrollSpeedMultiplier
+        val scrollChanged = newScrollFactor != settings.scrollSpeedMultiplier
 
         if (newToken.isNotEmpty() && newToken.length < 20) {
             notificationGroup
@@ -164,8 +207,16 @@ class PerplexityConfigurable : Configurable {
             return
         }
 
-        settings.sessionToken = newToken
+        credentials.setToken(newToken)
         settings.gpuEnabled = gpuCheckbox?.isSelected ?: false
+        settings.scrollSpeedMultiplier = newScrollFactor
+
+        if (scrollChanged) {
+            // Push live to any open Perplexity panel without requiring reload.
+            ProjectManager.getInstance().openProjects.forEach { project ->
+                PerplexityPanelService.getInstance(project).panel?.applyScrollSpeed()
+            }
+        }
 
         modified = false
 
@@ -199,11 +250,16 @@ class PerplexityConfigurable : Configurable {
     }
 
     override fun reset() {
-        tokenField?.text = settings.sessionToken
+        tokenField?.text = credentials.getToken()
         gpuCheckbox?.isSelected = settings.gpuEnabled
+        scrollSpeedSlider?.value = factorToSlider(settings.scrollSpeedMultiplier)
+        scrollSpeedLabel?.text = formatScrollLabel(settings.scrollSpeedMultiplier)
         modified = false
         updateExpirationLabel()
     }
+
+    private fun formatScrollLabel(factor: Double): String =
+        "Scroll speed multiplier: ${"%.1f".format(Locale.ENGLISH, factor)}x"
 }
 
 class TokenInstructionsDialog : DialogWrapper(null) {

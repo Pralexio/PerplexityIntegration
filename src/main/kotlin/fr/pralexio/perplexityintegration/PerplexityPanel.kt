@@ -1,8 +1,8 @@
 package fr.pralexio.perplexityintegration
 
-import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationType
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.TimeUnit
@@ -10,6 +10,7 @@ import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
+import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
@@ -19,19 +20,18 @@ import java.awt.FlowLayout
 import java.util.*
 import javax.swing.*
 
-class PerplexityPanel {
+class PerplexityPanel : Disposable {
 
+    private val log = Logger.getInstance(PerplexityPanel::class.java)
     private var browser: JBCefBrowser? = null
+    private var loadHandler: CefLoadHandlerAdapter? = null
     private val settings = PerplexitySettings.getInstance()
+    private val credentials = PerplexityCredentialStore.getInstance()
     private val containerPanel = JPanel(BorderLayout())
     private val component: JComponent
     private var devToolsOpen = false
     private var zoomLabel: JLabel? = null
     private var currentZoom: Double = 1.0
-
-    private val notificationGroup by lazy {
-        NotificationGroupManager.getInstance().getNotificationGroup("Perplexity.Notifications")
-    }
 
     private val darkModeScript: String by lazy {
         """
@@ -67,6 +67,47 @@ class PerplexityPanel {
         """.trimIndent()
     }
 
+    private fun buildScrollBoostScript(): String {
+        val factor = settings.scrollSpeedMultiplier.coerceIn(1.0, 8.0)
+        return """
+            (function() {
+                const factor = $factor;
+                if (window.__perplexityScrollFactor !== undefined) {
+                    window.__perplexityScrollFactor = factor;
+                    return;
+                }
+                window.__perplexityScrollFactor = factor;
+
+                function findScrollable(target) {
+                    let el = target;
+                    while (el && el.nodeType === 1 && el !== document.body && el !== document.documentElement) {
+                        const cs = getComputedStyle(el);
+                        const oy = cs.overflowY;
+                        if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) {
+                            return el;
+                        }
+                        el = el.parentElement;
+                    }
+                    return document.scrollingElement || document.documentElement;
+                }
+
+                window.addEventListener('wheel', function(e) {
+                    if (e.ctrlKey || e.metaKey) return;
+                    const f = window.__perplexityScrollFactor || 1;
+                    if (f <= 1) return;
+                    const scrollEl = findScrollable(e.target);
+                    if (!scrollEl) return;
+                    e.preventDefault();
+                    scrollEl.scrollBy({
+                        top: e.deltaY * f,
+                        left: e.deltaX * f,
+                        behavior: 'auto'
+                    });
+                }, { passive: false, capture: true });
+            })();
+        """.trimIndent()
+    }
+
     init {
         if (JBCefApp.isSupported()) {
             val toolbar = createToolbar()
@@ -93,16 +134,16 @@ class PerplexityPanel {
                 containerPanel.remove(1)
             }
 
-            browser?.dispose()
-            browser = null
+            disposeBrowser()
 
             if (!JBCefApp.isSupported()) {
                 showBrowserError("JCEF is not supported on this system.")
                 return
             }
 
-            if (settings.sessionToken.isNotEmpty()) {
-                injectSessionToken(settings.sessionToken)
+            val initialToken = credentials.getToken()
+            if (initialToken.isNotEmpty()) {
+                injectSessionToken(initialToken)
             }
 
             currentZoom = settings.zoomLevel
@@ -112,7 +153,7 @@ class PerplexityPanel {
                 .setUrl("about:blank")
                 .build()
 
-            newBrowser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
+            val handler = object : CefLoadHandlerAdapter() {
                 override fun onLoadStart(
                     cefBrowser: CefBrowser?,
                     frame: CefFrame?,
@@ -130,14 +171,34 @@ class PerplexityPanel {
                 ) {
                     if (frame == null || !frame.isMain) return
 
-                    if (settings.sessionToken.isNotEmpty()) {
-                        injectSessionToken(settings.sessionToken)
+                    val token = credentials.getToken()
+                    if (token.isNotEmpty()) {
+                        injectSessionToken(token)
                     }
 
                     cefBrowser?.executeJavaScript(darkModeScript, cefBrowser.url, 0)
+                    cefBrowser?.executeJavaScript(buildScrollBoostScript(), cefBrowser.url, 0)
                     applyZoom()
                 }
-            }, newBrowser.cefBrowser)
+
+                override fun onLoadError(
+                    cefBrowser: CefBrowser?,
+                    frame: CefFrame?,
+                    errorCode: CefLoadHandler.ErrorCode?,
+                    errorText: String?,
+                    failedUrl: String?
+                ) {
+                    if (frame == null || !frame.isMain) return
+                    // ERR_ABORTED is emitted on normal navigation away — ignore it.
+                    if (errorCode == CefLoadHandler.ErrorCode.ERR_ABORTED) return
+
+                    log.warn("Perplexity load error: code=$errorCode text=$errorText url=$failedUrl")
+                    val detail = errorText?.takeIf { it.isNotBlank() } ?: errorCode?.name ?: "Unknown error"
+                    showBrowserError("Could not load Perplexity: $detail")
+                }
+            }
+            newBrowser.jbCefClient.addLoadHandler(handler, newBrowser.cefBrowser)
+            loadHandler = handler
 
             browser = newBrowser
 
@@ -152,20 +213,57 @@ class PerplexityPanel {
             }, 500, TimeUnit.MILLISECONDS)
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.warn("Failed to initialize Perplexity browser", e)
             showBrowserError("Failed to load browser: ${e.message}")
         }
+    }
+
+    private fun disposeBrowser() {
+        val current = browser
+        val handler = loadHandler
+        if (current != null && handler != null) {
+            try {
+                current.jbCefClient.removeLoadHandler(handler, current.cefBrowser)
+            } catch (e: Exception) {
+                log.debug("Failed to remove existing load handler", e)
+            }
+        }
+        loadHandler = null
+        try {
+            current?.dispose()
+        } catch (e: Exception) {
+            log.debug("Failed to dispose existing browser", e)
+        }
+        browser = null
     }
 
 
     private fun showBrowserError(message: String) {
         ApplicationManager.getApplication().invokeLater {
-            val errorLabel = JLabel("<html><center>$message<br>Try clicking Reload or restart the IDE.</center></html>")
-            errorLabel.horizontalAlignment = SwingConstants.CENTER
             if (containerPanel.componentCount > 1) {
                 containerPanel.remove(1)
             }
-            containerPanel.add(errorLabel, BorderLayout.CENTER)
+
+            val errorPanel = JPanel(BorderLayout())
+
+            val safeMessage = message
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            val label = JLabel(
+                "<html><center><b>Perplexity unavailable</b><br><br>$safeMessage</center></html>",
+                SwingConstants.CENTER
+            )
+            label.horizontalAlignment = SwingConstants.CENTER
+            errorPanel.add(label, BorderLayout.CENTER)
+
+            val retryButton = JButton("Retry")
+            retryButton.addActionListener { loadBrowser() }
+            val buttonRow = JPanel(FlowLayout(FlowLayout.CENTER))
+            buttonRow.add(retryButton)
+            errorPanel.add(buttonRow, BorderLayout.SOUTH)
+
+            containerPanel.add(errorPanel, BorderLayout.CENTER)
             containerPanel.revalidate()
             containerPanel.repaint()
         }
@@ -178,8 +276,9 @@ class PerplexityPanel {
         }
 
         browser?.let { browserInstance ->
-            if (settings.sessionToken.isNotEmpty()) {
-                injectSessionToken(settings.sessionToken)
+            val token = credentials.getToken()
+            if (token.isNotEmpty()) {
+                injectSessionToken(token)
             }
 
             browserInstance.loadURL("about:blank")
@@ -281,6 +380,7 @@ class PerplexityPanel {
             )
             cookieManager.setCookie("https://www.perplexity.ai", wwwCookie)
         } catch (e: Exception) {
+            log.warn("Failed to inject Perplexity session cookie", e)
         }
     }
 
@@ -290,6 +390,7 @@ class PerplexityPanel {
                 browserInstance.openDevtools()
                 devToolsOpen = !devToolsOpen
             } catch (e: Exception) {
+                log.warn("Failed to toggle Perplexity DevTools", e)
             }
         }
     }
@@ -325,23 +426,28 @@ class PerplexityPanel {
         }
     }
 
+    fun applyScrollSpeed() {
+        val factor = settings.scrollSpeedMultiplier.coerceIn(1.0, 8.0)
+        browser?.let { browserInstance ->
+            val js = "if (window.__perplexityScrollFactor !== undefined) window.__perplexityScrollFactor = $factor;"
+            browserInstance.cefBrowser.executeJavaScript(js, browserInstance.cefBrowser.url, 0)
+        }
+    }
+
     private fun updateZoomLabel() {
         zoomLabel?.text = "${(currentZoom * 100).toInt()}%"
     }
 
-    fun sendCodeToChat(code: String, language: String = "") {
+    fun sendCodeToChat(code: String, language: String = "", instruction: String = "") {
         browser?.let { browserInstance ->
-            val escapedCode = code
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("'", "\\'")
-                .replace("`", "\\`")
-                .replace("\$", "\\\$")
-                .replace("\n", "\\n")
-                .replace("\r", "")
-
+            val escapedCode = escapeForJs(code)
             val langInfo = if (language.isNotEmpty()) " ($language)" else ""
-            val fullText = "Here is my code$langInfo:\\n\\n$escapedCode"
+            val preamble = if (instruction.isNotEmpty()) {
+                "${escapeForJs(instruction)}\\n\\nHere is the code$langInfo:"
+            } else {
+                "Here is my code$langInfo:"
+            }
+            val fullText = "$preamble\\n\\n$escapedCode"
 
             val script = """
                 (function() {
@@ -382,6 +488,15 @@ class PerplexityPanel {
         }
     }
 
+    private fun escapeForJs(s: String): String = s
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("'", "\\'")
+        .replace("`", "\\`")
+        .replace("\$", "\\\$")
+        .replace("\n", "\\n")
+        .replace("\r", "")
+
     fun focusBrowser() {
         browser?.component?.requestFocusInWindow()
     }
@@ -390,7 +505,7 @@ class PerplexityPanel {
         return component
     }
 
-    fun dispose() {
-        browser?.dispose()
+    override fun dispose() {
+        disposeBrowser()
     }
 }

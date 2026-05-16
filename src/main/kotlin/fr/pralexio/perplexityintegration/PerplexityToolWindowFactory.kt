@@ -1,6 +1,7 @@
 package fr.pralexio.perplexityintegration
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
@@ -11,7 +12,7 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 import java.awt.BorderLayout
 
-class PerplexityToolWindowFactory : ToolWindowFactory {
+class PerplexityToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         if (!JBCefApp.isSupported()) {

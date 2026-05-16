@@ -82,7 +82,7 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 
 ## ⚙️ Requirements
 
-- IntelliJ IDEA 2023.1+ (or any JetBrains IDE)
+- IntelliJ IDEA 2025.1+ (or any compatible JetBrains IDE on build 251+)
 - JCEF (Java Chromium Embedded Framework) support
 - Internet connection
 
