@@ -41,3 +41,5 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+.intellijPlatform/self-update.lock
+.claude/worktrees/thirsty-perlman-b011b2/
