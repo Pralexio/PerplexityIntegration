@@ -8,7 +8,6 @@ import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPasswordField
-import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTabbedPane
 import com.intellij.util.ui.FormBuilder
 import com.intellij.util.ui.JBUI
@@ -26,7 +25,6 @@ class PerplexityConfigurable : Configurable {
     private val settings = PerplexitySettings.getInstance()
     private val credentials = PerplexityCredentialStore.getInstance()
     private var tokenField: JBPasswordField? = null
-    private var gpuCheckbox: JBCheckBox? = null
     private var expirationLabel: JBLabel? = null
     private var scrollSpeedSlider: JSlider? = null
     private var scrollSpeedLabel: JBLabel? = null
@@ -92,10 +90,6 @@ class PerplexityConfigurable : Configurable {
         expirationLabel = JBLabel()
         updateExpirationLabel()
 
-        gpuCheckbox = JBCheckBox("Enable GPU Acceleration (requires IDE restart)")
-        gpuCheckbox?.isSelected = settings.gpuEnabled
-        gpuCheckbox?.addActionListener { modified = true }
-
         val resetPrivacyButton = JButton("Reset privacy warning")
         resetPrivacyButton.toolTipText = "Show the \"send to Perplexity\" confirmation dialog again on next use"
         resetPrivacyButton.addActionListener {
@@ -155,8 +149,6 @@ class PerplexityConfigurable : Configurable {
             .addComponent(scrollSpeedLabel!!)
             .addComponent(scrollSpeedSlider!!)
             .addVerticalGap(10)
-            .addComponent(gpuCheckbox!!)
-            .addVerticalGap(10)
             .addComponent(resetPrivacyButton)
             .addComponentFillVertically(JPanel(), 0)
             .panel
@@ -185,14 +177,12 @@ class PerplexityConfigurable : Configurable {
         val sliderFactor = scrollSpeedSlider?.let { sliderToFactor(it.value) } ?: settings.scrollSpeedMultiplier
         return modified ||
                 currentToken != credentials.getToken() ||
-                gpuCheckbox?.isSelected != settings.gpuEnabled ||
                 sliderFactor != settings.scrollSpeedMultiplier
     }
 
     override fun apply() {
         val newToken = String(tokenField?.password ?: charArrayOf()).trim()
         val tokenChanged = newToken != credentials.getToken()
-        val gpuChanged = gpuCheckbox?.isSelected != settings.gpuEnabled
         val newScrollFactor = scrollSpeedSlider?.let { sliderToFactor(it.value) } ?: settings.scrollSpeedMultiplier
         val scrollChanged = newScrollFactor != settings.scrollSpeedMultiplier
 
@@ -208,7 +198,6 @@ class PerplexityConfigurable : Configurable {
         }
 
         credentials.setToken(newToken)
-        settings.gpuEnabled = gpuCheckbox?.isSelected ?: false
         settings.scrollSpeedMultiplier = newScrollFactor
 
         if (scrollChanged) {
@@ -237,21 +226,10 @@ class PerplexityConfigurable : Configurable {
                 )
                 .notify(null)
         }
-
-        if (gpuChanged) {
-            notificationGroup
-                .createNotification(
-                    "GPU Settings Changed",
-                    "Please restart the IDE for GPU settings to take effect.",
-                    NotificationType.INFORMATION
-                )
-                .notify(null)
-        }
     }
 
     override fun reset() {
         tokenField?.text = credentials.getToken()
-        gpuCheckbox?.isSelected = settings.gpuEnabled
         scrollSpeedSlider?.value = factorToSlider(settings.scrollSpeedMultiplier)
         scrollSpeedLabel?.text = formatScrollLabel(settings.scrollSpeedMultiplier)
         modified = false

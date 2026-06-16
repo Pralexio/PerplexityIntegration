@@ -44,3 +44,5 @@ bin/
 .intellijPlatform/self-update.lock
 .claude/worktrees/thirsty-perlman-b011b2/
 /.intellijPlatform
+AGENTS.md
+CLAUDE.md
