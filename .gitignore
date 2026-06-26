@@ -41,9 +41,7 @@ bin/
 
 ### Mac OS ###
 .DS_Store
-.intellijPlatform/self-update.lock
 .claude/worktrees/thirsty-perlman-b011b2/
-/.intellijPlatform
+.intellijPlatform/
 AGENTS.md
 CLAUDE.md
-.intellijPlatform/self-update.lock
