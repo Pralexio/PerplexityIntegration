@@ -1,0 +1,86 @@
+name: Bug report
+description: Report a reproducible problem with the plugin
+title: "Bug: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps needed to reproduce the issue.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      placeholder: "2.0"
+    validations:
+      required: true
+  - type: input
+    id: ide
+    attributes:
+      label: IDE name and version
+      placeholder: "IntelliJ IDEA 2026.2, GoLand 2026.2 EAP, Android Studio 2026.1.1"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11, macOS 15, Fedora Linux 44"
+    validations:
+      required: true
+  - type: textarea
+    id: runtime
+    attributes:
+      label: Runtime information
+      description: Paste the runtime section from Help -> About.
+    validations:
+      required: true
+  - type: dropdown
+    id: jcef
+    attributes:
+      label: Do other embedded browser features work?
+      description: For example, Markdown preview or other JCEF-based IDE features.
+      options:
+        - "Yes"
+        - "No"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Attach `idea.log` or paste the relevant error. Remove secrets and session tokens first.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Screenshots, links, or other details.

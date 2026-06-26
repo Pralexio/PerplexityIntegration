@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an improvement or new workflow
+title: "Feature: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow or limitation should this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe how you expect the feature to work.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional alternatives or workarounds.
+  - type: input
+    id: ide
+    attributes:
+      label: IDE name and version
+      placeholder: "IntelliJ IDEA, GoLand, Android Studio, PyCharm..."
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, examples, or related links.
