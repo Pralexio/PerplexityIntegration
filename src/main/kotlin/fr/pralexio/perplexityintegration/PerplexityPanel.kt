@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.TimeUnit
+import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -27,7 +28,7 @@ class PerplexityPanel : Disposable {
     private val settings = PerplexitySettings.getInstance()
     private val credentials = PerplexityCredentialStore.getInstance()
     private val containerPanel = JPanel(BorderLayout())
-    private val component: JComponent
+    private lateinit var component: JComponent
     private var devToolsOpen = false
     private var zoomLabel: JLabel? = null
     private var currentZoom: Double = 1.0
@@ -108,22 +109,28 @@ class PerplexityPanel : Disposable {
     }
 
     init {
-        val jcefError = PerplexityJcefSupport.checkSupported()
-        if (jcefError == null) {
-            val toolbar = createToolbar()
-            containerPanel.add(toolbar, BorderLayout.NORTH)
+        try {
+            if (JBCefApp.isSupported()) {
+                val toolbar = createToolbar()
+                containerPanel.add(toolbar, BorderLayout.NORTH)
 
-            component = containerPanel
+                component = containerPanel
 
-            AppExecutorUtil.getAppScheduledExecutorService().schedule({
-                ApplicationManager.getApplication().invokeLater {
-                    loadBrowser()
+                AppExecutorUtil.getAppScheduledExecutorService().schedule({
+                    ApplicationManager.getApplication().invokeLater {
+                        loadBrowser()
+                    }
+                }, 2000, TimeUnit.MILLISECONDS)
+            } else {
+                component = JPanel().apply {
+                    layout = BorderLayout()
+                    add(JLabel("JCEF is not supported on this system"), BorderLayout.CENTER)
                 }
-            }, 2000, TimeUnit.MILLISECONDS)
-        } else {
+            }
+        } catch (e: LinkageError) {
             component = JPanel().apply {
                 layout = BorderLayout()
-                add(JLabel(jcefError), BorderLayout.CENTER)
+                add(JLabel(PerplexityJcefSupport.messageForBrowserFailure(e)), BorderLayout.CENTER)
             }
         }
     }
@@ -136,8 +143,8 @@ class PerplexityPanel : Disposable {
 
             disposeBrowser()
 
-            PerplexityJcefSupport.checkSupported()?.let { message ->
-                showBrowserError(message)
+            if (!JBCefApp.isSupported()) {
+                showBrowserError("JCEF is not supported on this system.")
                 return
             }
 
@@ -217,7 +224,7 @@ class PerplexityPanel : Disposable {
             showBrowserError(message)
         } catch (e: Exception) {
             log.warn("Failed to initialize Perplexity browser", e)
-            showBrowserError(PerplexityJcefSupport.unavailableMessage(e.message))
+            showBrowserError("Failed to load browser: ${e.message}")
         }
     }
 
@@ -254,12 +261,17 @@ class PerplexityPanel : Disposable {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
             val label = JLabel(
-                "<html><body style='text-align:center; width:420px;'>" +
-                        "<b>${PerplexityJcefSupport.UNAVAILABLE_TITLE}</b><br><br>$safeMessage</body></html>",
+                "<html><center><b>Perplexity unavailable</b><br><br>$safeMessage</center></html>",
                 SwingConstants.CENTER
             )
             label.horizontalAlignment = SwingConstants.CENTER
             errorPanel.add(label, BorderLayout.CENTER)
+
+            val retryButton = JButton("Retry")
+            retryButton.addActionListener { loadBrowser() }
+            val buttonRow = JPanel(FlowLayout(FlowLayout.CENTER))
+            buttonRow.add(retryButton)
+            errorPanel.add(buttonRow, BorderLayout.SOUTH)
 
             containerPanel.add(errorPanel, BorderLayout.CENTER)
             containerPanel.revalidate()

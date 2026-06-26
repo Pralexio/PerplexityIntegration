@@ -9,19 +9,15 @@ internal object PerplexityJcefSupport {
 
     const val UNAVAILABLE_TITLE = "Perplexity AI Chat unavailable"
 
-    fun checkSupported(): String? {
-        return try {
-            if (JBCefApp.isSupported()) {
-                null
-            } else {
-                unavailableMessage("JCEF is not supported in this IDE runtime.")
+    fun checkSupported() {
+        try {
+            if (!JBCefApp.isSupported()) {
+                log.warn("JBCefApp.isSupported() returned false; attempting browser creation anyway.")
             }
         } catch (e: LinkageError) {
             log.warn("JCEF compatibility check failed", e)
-            unavailableMessage(detail(e))
         } catch (e: Exception) {
             log.warn("JCEF support check failed", e)
-            unavailableMessage(detail(e))
         }
     }
 

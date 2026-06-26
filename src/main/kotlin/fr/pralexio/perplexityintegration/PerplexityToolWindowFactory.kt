@@ -7,6 +7,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
+import com.intellij.ui.jcef.JBCefApp
 import com.intellij.util.ui.JBUI
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -16,13 +17,20 @@ import java.awt.BorderLayout
 class PerplexityToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        PerplexityJcefSupport.checkSupported()?.let { message ->
-            addFallbackContent(toolWindow, message)
+        try {
+            if (!JBCefApp.isSupported()) {
+                addFallbackContent(toolWindow, "JCEF is not supported on this system")
+                return
+            }
+        } catch (e: LinkageError) {
+            addFallbackContent(toolWindow, PerplexityJcefSupport.messageForBrowserFailure(e))
             return
         }
 
         ApplicationManager.getApplication().invokeLater {
             try {
+                JBCefApp.getInstance()
+
                 val perplexityPanel = PerplexityPanel()
                 val content = ContentFactory.getInstance().createContent(
                     perplexityPanel.getContent(),
