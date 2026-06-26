@@ -13,7 +13,7 @@ Please do not publish security vulnerabilities in a public issue.
 Report sensitive issues privately to the maintainer:
 
 ```text
-contact@pralexio.fr
+thibaultpernel@gmail.com
 ```
 
 Include:
