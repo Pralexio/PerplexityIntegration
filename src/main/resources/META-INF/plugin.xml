@@ -13,6 +13,7 @@
             <li>Session token management for persistent login</li>
             <li>Adjustable zoom controls</li>
             <li>Developer tools access for debugging</li>
+            <li>Clear diagnostics when the embedded JetBrains browser is unavailable or incompatible</li>
         </ul>
         <p><strong>Features:</strong></p>
         <ul>
@@ -20,6 +21,7 @@
             <li>Context menu action for sending code</li>
             <li>Persistent settings (zoom level, session token)</li>
             <li>Off-screen rendering for Windows compatibility</li>
+            <li>Graceful unsupported-runtime message for IDEs without compatible JCEF support</li>
         </ul>
     ]]></description>
 

@@ -61,8 +61,8 @@ abstract class PerplexitySendActionBase(
         toolWindow.show {
             try {
                 val panel = PerplexityPanelService.getInstance(project).panel
-                if (panel == null) {
-                    showError(project, "Perplexity panel not initialized. Please wait a moment and try again.")
+                if (panel == null || !panel.isBrowserReady()) {
+                    showError(project, PerplexityJcefSupport.unavailableMessage())
                     return@show
                 }
 

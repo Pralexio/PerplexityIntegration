@@ -46,3 +46,4 @@ bin/
 /.intellijPlatform
 AGENTS.md
 CLAUDE.md
+.intellijPlatform/self-update.lock

@@ -6,7 +6,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.TimeUnit
-import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -109,7 +108,8 @@ class PerplexityPanel : Disposable {
     }
 
     init {
-        if (JBCefApp.isSupported()) {
+        val jcefError = PerplexityJcefSupport.checkSupported()
+        if (jcefError == null) {
             val toolbar = createToolbar()
             containerPanel.add(toolbar, BorderLayout.NORTH)
 
@@ -123,7 +123,7 @@ class PerplexityPanel : Disposable {
         } else {
             component = JPanel().apply {
                 layout = BorderLayout()
-                add(JLabel("JCEF is not supported on this system"), BorderLayout.CENTER)
+                add(JLabel(jcefError), BorderLayout.CENTER)
             }
         }
     }
@@ -136,8 +136,8 @@ class PerplexityPanel : Disposable {
 
             disposeBrowser()
 
-            if (!JBCefApp.isSupported()) {
-                showBrowserError("JCEF is not supported on this system.")
+            PerplexityJcefSupport.checkSupported()?.let { message ->
+                showBrowserError(message)
                 return
             }
 
@@ -212,9 +212,12 @@ class PerplexityPanel : Disposable {
                 }
             }, 500, TimeUnit.MILLISECONDS)
 
+        } catch (e: LinkageError) {
+            val message = PerplexityJcefSupport.messageForBrowserFailure(e)
+            showBrowserError(message)
         } catch (e: Exception) {
             log.warn("Failed to initialize Perplexity browser", e)
-            showBrowserError("Failed to load browser: ${e.message}")
+            showBrowserError(PerplexityJcefSupport.unavailableMessage(e.message))
         }
     }
 
@@ -251,17 +254,12 @@ class PerplexityPanel : Disposable {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
             val label = JLabel(
-                "<html><center><b>Perplexity unavailable</b><br><br>$safeMessage</center></html>",
+                "<html><body style='text-align:center; width:420px;'>" +
+                        "<b>${PerplexityJcefSupport.UNAVAILABLE_TITLE}</b><br><br>$safeMessage</body></html>",
                 SwingConstants.CENTER
             )
             label.horizontalAlignment = SwingConstants.CENTER
             errorPanel.add(label, BorderLayout.CENTER)
-
-            val retryButton = JButton("Retry")
-            retryButton.addActionListener { loadBrowser() }
-            val buttonRow = JPanel(FlowLayout(FlowLayout.CENTER))
-            buttonRow.add(retryButton)
-            errorPanel.add(buttonRow, BorderLayout.SOUTH)
 
             containerPanel.add(errorPanel, BorderLayout.CENTER)
             containerPanel.revalidate()
@@ -446,14 +444,7 @@ class PerplexityPanel : Disposable {
 
     fun sendCodeToChat(code: String, language: String = "", instruction: String = "") {
         browser?.let { browserInstance ->
-            val escapedCode = escapeForJs(code)
-            val langInfo = if (language.isNotEmpty()) " ($language)" else ""
-            val preamble = if (instruction.isNotEmpty()) {
-                "${escapeForJs(instruction)}\\n\\nHere is the code$langInfo:"
-            } else {
-                "Here is my code$langInfo:"
-            }
-            val fullText = "$preamble\\n\\n$escapedCode"
+            val fullText = escapeForJs(PerplexityPromptText.build(code, language, instruction))
 
             val script = """
                 (function() {
@@ -493,6 +484,8 @@ class PerplexityPanel : Disposable {
             browserInstance.cefBrowser.executeJavaScript(script, browserInstance.cefBrowser.url, 0)
         }
     }
+
+    fun isBrowserReady(): Boolean = browser != null
 
     private fun escapeForJs(s: String): String = s
         .replace("\\", "\\\\")

@@ -30,18 +30,12 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <h3>Version 1.9</h3>
+            <h3>Version 2.0</h3>
             <ul>
-                <li><strong>NEW:</strong> Dedicated Settings dialog for cleaner UI</li>
-                <li><strong>NEW:</strong> Better error notifications for "Send to Perplexity" action</li>
-                <li><strong>NEW:</strong> Success notifications showing line count when sending code</li>
-                <li><strong>IMPROVED:</strong> Native dark mode using matchMedia override</li>
-                <li><strong>IMPROVED:</strong> Simplified toolbar with Settings button</li>
-                <li><strong>IMPROVED:</strong> Better diagnostics for action failures</li>
-                <li><strong>IMPROVED:</strong> Session token now stored via the IDE secure credential store (PasswordSafe). Existing tokens migrate automatically on first launch.</li>
-                <li><strong>FIXED:</strong> JCEF initialization issues on Windows</li>
-                <li><strong>FIXED:</strong> Dark mode persistence across page loads</li>
-                <li><strong>FIXED:</strong> Action threading model now declares background-thread updates as required by recent platform versions.</li>
+                <li><strong>FIXED:</strong> Prevents tool window crashes when the IDE runtime exposes an unavailable or incompatible embedded JetBrains browser (JCEF).</li>
+                <li><strong>IMPROVED:</strong> Shows a clear unsupported-runtime message instead of leaving the Perplexity panel blank.</li>
+                <li><strong>IMPROVED:</strong> Send actions now fail cleanly when the embedded browser is unavailable.</li>
+                <li><strong>IMPROVED:</strong> Error guidance now asks users to verify IDE, OS, and runtime JCEF support and include runtime details with issue reports.</li>
             </ul>
         """.trimIndent()
     }

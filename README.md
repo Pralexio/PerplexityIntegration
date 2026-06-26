@@ -16,7 +16,7 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 - ⚡ **Scroll Speed Boost** - Adjustable multiplier (1.0x – 8.0x) to compensate for JCEF off-screen rendering
 - 🔒 **Secure Token Storage** - Session token stored in the IDE's PasswordSafe (OS-encrypted)
 - ⚠️ **Privacy Warning** - One-time confirmation before code leaves the IDE
-- 🔄 **Retry on Failure** - Clear error overlay with a retry button when Perplexity is unreachable
+- 🧩 **Compatibility Diagnostics** - Clear non-crashing message when the IDE's embedded browser runtime is unavailable or incompatible
 - 🌙 **Native Dark Mode** - Automatic dark theme synchronized with your IDE
 - 🔐 **Session Persistence** - Stay logged in across IDE restarts
 - 🎯 **Smart Notifications** - Get feedback when sending code (with line count)
@@ -96,12 +96,13 @@ Access Perplexity AI directly in your IDE without switching windows. Get instant
 ## ⚙️ Requirements
 
 - IntelliJ IDEA 2025.1+ (or any compatible JetBrains IDE on build 251+)
-- JCEF (Java Chromium Embedded Framework) support
+- JCEF (Java Chromium Embedded Framework) support from the IDE runtime
 - Internet connection
 
 ## 🐛 Known Limitations
 
 - **Scroll Speed (mitigated in v1.9):** JCEF off-screen rendering scrolls slower than a native browser. v1.9 adds a JavaScript-level scroll multiplier (Settings → Tools → Perplexity AI, default 3.0x, range 1.0x – 8.0x) that compensates for most of the slowdown. Increase the multiplier if it still feels too slow.
+- **JCEF Runtime Compatibility (improved in v2.0):** Some IDE builds, EAP releases, custom runtimes, or OS/runtime combinations may not expose a compatible embedded JetBrains browser. v2.0 shows a clear unsupported-runtime message instead of a blank panel or tool window crash. Please verify online that your IDE, OS, and runtime support JCEF before opening an issue.
 - **Google / Apple Sign-In:** Google and Apple block OAuth flows inside embedded browsers (CEF/JCEF) as a security policy — this cannot be worked around at the plugin level. Use the **email login** (Perplexity sends a one-time code, even for Google-linked accounts) or the **session token** method instead.
 
 ## ⚙️ Settings
@@ -132,9 +133,12 @@ Please include:
 - IntelliJ IDEA version
 - Plugin version
 - Operating System
+- IDE runtime information
+- Whether your IDE, OS, and runtime support JCEF
 - Steps to reproduce
 - Expected vs. actual behavior
 - Error notifications (if any)
+- `idea.log` when the embedded browser fails to initialize
 
 ## 🏗️ Development
 
@@ -156,7 +160,13 @@ Please include:
 
 ## 📝 Changelog
 
-### v1.9 (Latest)
+### v2.0 (Latest)
+- 🐛 **Fixed:** Prevents tool window crashes when the IDE exposes an unavailable or incompatible embedded JetBrains browser (JCEF).
+- 🧩 **Improved:** Shows a clear unsupported-runtime message instead of a blank Perplexity panel.
+- ⚠️ **Improved:** Send actions now fail cleanly when the embedded browser is unavailable.
+- 📋 **Improved:** Error guidance now asks users to verify IDE, OS, and runtime JCEF support and include runtime details with issue reports.
+
+### v1.9
 - ✨ **New:** "Perplexity ▶" sub-menu in the editor right-click with six prompt actions: *Explain*, *Find Bugs*, *Optimize*, *Write Tests*, *Refactor*, *Add Comments*. `Ctrl+Shift+P` still triggers the raw send.
 - ⚡ **New:** Scroll speed multiplier (1.0x – 8.0x, default 3.0x) — workaround for the slow JCEF off-screen rendering scroll. Live update from Settings without reload.
 - 🔒 **New:** Session token migrated to PasswordSafe (Windows DPAPI / macOS Keychain / Linux Secret Service). Existing tokens migrate automatically on first launch.
