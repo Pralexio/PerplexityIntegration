@@ -62,7 +62,7 @@
 
 ## Requirements
 
-- JetBrains IDE build 251 or later
+- JetBrains IDE build 243 or later
 - JDK 21 runtime as provided by the IDE
 - Compatible JCEF support from the IDE runtime
 - Internet connection

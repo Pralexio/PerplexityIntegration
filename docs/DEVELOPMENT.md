@@ -6,7 +6,7 @@ This project is a Kotlin IntelliJ Platform plugin that embeds Perplexity in a JC
 
 - JDK 21
 - Gradle wrapper from this repository
-- JetBrains IDE compatible with IntelliJ Platform build 251 or later
+- JetBrains IDE compatible with IntelliJ Platform build 243 or later
 
 ## Commands
 

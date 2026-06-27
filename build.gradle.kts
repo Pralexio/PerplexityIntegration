@@ -16,7 +16,10 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        create("IC", "2025.1.4.1")
+        create(
+            providers.gradleProperty("platformType").get(),
+            providers.gradleProperty("platformVersion").get()
+        )
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
         jetbrainsRuntime()
     }
@@ -30,10 +33,10 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <h3>Version 2.0.1</h3>
+            <h3>Version 2.1.0</h3>
             <ul>
-                <li><strong>FIXED:</strong> Restores the legacy JCEF startup path for IDEs where the embedded browser works normally.</li>
-                <li><strong>FIXED:</strong> Keeps the crash guard for incompatible JCEF runtimes without blocking supported setups.</li>
+                <li><strong>ADDED:</strong> Extends plugin compatibility to JetBrains IDE build 243 and newer.</li>
+                <li><strong>TESTED:</strong> Verified the embedded Perplexity panel on GoLand 2024.3.</li>
             </ul>
         """.trimIndent()
     }
